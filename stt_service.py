@@ -16,10 +16,11 @@ load_dotenv()
 parser = argparse.ArgumentParser(description="Real-time Deepgram transcription from any audio source.")
 parser.add_argument("source", nargs="?", default=os.getenv("STREAM_SOURCE", "./sample.mp3"), help="Path or URL to the audio source.")
 parser.add_argument("--duration", type=float, default=None, help="Stop transcription after this many seconds.")
+parser.add_argument("--download", action="store_true", help="Download audio locally first (no start truncation; best for demos).")
 args = parser.parse_args()
 
 try:
-    source, info = resolve_stream_url(args.source)
+    source, info = resolve_stream_url(args.source, download=args.download)
     print(f"Source: {source}")
     print(f"Info: {info}\n")
 except Exception as exc:
