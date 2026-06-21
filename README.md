@@ -12,6 +12,10 @@ Audio source (file/URL, or live browser tab capture)
     → frontend/            (browser overlay plays the clips, in sync with the video)
 ```
 
+## System architecture
+
+![SignCast system architecture](images/calhacks26_architecture.png)
+
 ## Files
 
 - `audio_extractor.py` — pulls audio from any source (local file, HLS, RTMP, HTTP stream), decodes to real-time 16kHz mono PCM, emits bytes via `on_audio`. Used when `stt_service.py` is given a file/URL directly.
