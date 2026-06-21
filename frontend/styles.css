@@ -88,13 +88,17 @@ body {
 }
 
 #gloss {
-  padding: 6px 10px 2px;
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: .4px;
-  color: #7be6b4;
-  min-height: 18px;
-  background: rgba(0,0,0,.35);
+  padding: 8px 10px;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: .6px;
+  text-align: center;
+  text-transform: uppercase;
+  color: #0b0b0f;
+  min-height: 24px;
+  background: #7be6b4;
+  border-top: 1px solid rgba(0,0,0,.25);
+  text-shadow: none;
 }
 
 #caption {
