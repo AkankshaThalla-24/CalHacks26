@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Live Sports · Sign-Language Overlay</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- Background: the live match -->
+  <div id="stage">
+    <div id="player"></div> <!-- YouTube IFrame Player mounts here -->
+
+    <!-- Translucent, draggable, resizable SL overlay -->
+    <div id="overlay" class="corner-br">
+      <div id="overlay-header">
+        <span class="dot"></span>
+        <span id="sl-badge">ASL</span>
+        <select id="sl-select" title="Sign language">
+          <option value="ASL">ASL</option>
+          <option value="BSL">BSL</option>
+          <option value="LSF">LSF</option>
+          <option value="CSL">CSL</option>
+          <option value="JSL">JSL</option>
+        </select>
+        <span id="conn" class="conn">connecting…</span>
+      </div>
+      <video id="sl-video" muted playsinline></video>
+      <div id="gloss" title="What the avatar signs (target-language gloss)"></div>
+      <div id="caption"></div>
+      <div id="resize-handle" title="Drag to resize"></div>
+    </div>
+
+    <!-- Minimal control: pick which corner the overlay sits in -->
+    <div id="corner-picker">
+      <span>Overlay corner:</span>
+      <button data-corner="tl">↖</button>
+      <button data-corner="tr">↗</button>
+      <button data-corner="bl">↙</button>
+      <button data-corner="br" class="active">↘</button>
+    </div>
+  </div>
+
+  <script src="https://www.youtube.com/iframe_api"></script>
+  <script src="youtube.js"></script>
+  <script src="stream-client.js"></script>
+  <script src="overlay.js"></script>
+</body>
+</html>
