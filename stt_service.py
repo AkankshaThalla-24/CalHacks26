@@ -1,5 +1,6 @@
 import argparse
 import os
+import queue
 import sys
 import threading
 import time
@@ -10,6 +11,7 @@ from deepgram.core.events import EventType
 
 from audio_extractor import AudioExtractor
 from stream_resolver import resolve_stream_url
+from gloss_pipeline import process_transcript
 
 load_dotenv()
 
@@ -32,7 +34,36 @@ if not api_key:
     print("ERROR: DEEPGRAM_API_KEY is missing. Set it in .env or the environment.")
     sys.exit(1)
 
+if not os.getenv("ANTHROPIC_API_KEY"):
+    print("ERROR: ANTHROPIC_API_KEY is missing. Set it in .env or the environment.")
+    sys.exit(1)
+
 client = DeepgramClient(api_key=api_key)
+
+# Utterance buffering: Deepgram fires is_final on internal endpointing flushes
+# (often mid-sentence fragments), but speech_final marks a true pause. We
+# accumulate is_final fragments and only send the joined utterance to the
+# gloss pipeline once speech_final fires, so Claude sees full sentences.
+transcript_buffer = []
+gloss_queue = queue.Queue()
+GLOSS_STOP = object()
+
+
+def gloss_worker():
+    """Consumes complete utterances and converts them to ASL gloss steps, one at a time (preserves order)."""
+    while True:
+        item = gloss_queue.get()
+        if item is GLOSS_STOP:
+            break
+        try:
+            steps = process_transcript(item)
+        except Exception as e:
+            print(f"→ [GLOSS] error converting {item!r}: {e}")
+            continue
+        if steps is None:
+            print(f"→ [GLOSS] no valid gloss for: {item!r}")
+        else:
+            print(f"→ [GLOSS] {item!r} -> {steps}")
 
 
 def on_message(result):
@@ -43,10 +74,21 @@ def on_message(result):
         alt = channel.alternatives[0]
         transcript = alt.transcript
         is_final = result.is_final
+        speech_final = result.speech_final
 
         if transcript:
             marker = "[FINAL]" if is_final else "[interim]"
             print(f"{marker} (t={result.start:.2f}s) {transcript}")
+
+        if is_final and transcript:
+            transcript_buffer.append(transcript)
+
+        if speech_final and transcript_buffer:
+            utterance = " ".join(transcript_buffer).strip()
+            transcript_buffer.clear()
+            if utterance:
+                print(f"→ [GLOSS] queuing utterance: {utterance!r}")
+                gloss_queue.put(utterance)
 
 
 def on_error(error):
@@ -77,6 +119,11 @@ with client.listen.v1.connect(
     connection.on(EventType.MESSAGE, on_message)
     connection.on(EventType.ERROR, on_error)
     connection.on(EventType.CLOSE, on_close)
+
+    # Worker processes gloss conversion off the Deepgram socket thread so a
+    # slow Claude call never stalls reading the next transcription frame.
+    gloss_thread = threading.Thread(target=gloss_worker, daemon=True)
+    gloss_thread.start()
 
     def feed_audio():
         """Feed audio chunks from the extractor to Deepgram."""
@@ -162,5 +209,20 @@ with client.listen.v1.connect(
         connection.start_listening()
     except Exception as e:
         print(f"→ [MAIN] start_listening() raised exception: {e}")
-    
+
     print("\n→ [MAIN] connection.start_listening() returned. Transcription complete.")
+
+    # No more on_message calls will fire past this point (single-threaded
+    # read loop already exited), so it's safe to flush any trailing
+    # fragment that never got a speech_final boundary.
+    if transcript_buffer:
+        leftover = " ".join(transcript_buffer).strip()
+        transcript_buffer.clear()
+        if leftover:
+            print(f"→ [GLOSS] queuing trailing utterance: {leftover!r}")
+            gloss_queue.put(leftover)
+
+    print("→ [MAIN] waiting for gloss queue to drain...")
+    gloss_queue.put(GLOSS_STOP)
+    gloss_thread.join(timeout=30)
+    print("→ [MAIN] gloss processing complete.")
