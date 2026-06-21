@@ -101,6 +101,16 @@ overall scores, and the weakest cases flagged.
 **Pipeline:** `testgen.py` (writes cases) → `translator.py` (the system under test:
 English → SL gloss) → `judge.py` (Claude-as-judge, 1–5 per metric) → `report.py`.
 
+**Optional live dashboard:** `observability.py` adds an Arize Phoenix tracing layer
+on top — no-op unless `USE_PHOENIX=1` is set, so `python agent.py` behaves identically
+with or without it. See `validation/PHOENIX_SETUP.md` for setup; the short version:
+```bash
+export USE_PHOENIX=1
+python agent.py --per 2
+```
+prints a Phoenix UI URL (default `http://localhost:6006`) showing every traced
+translate→judge span with its 5 scores, sortable worst-first.
+
 ## 2. Frontend overlay
 
 ```bash

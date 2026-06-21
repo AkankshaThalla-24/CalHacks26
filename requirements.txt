@@ -6,3 +6,7 @@ opencv-python>=4.8.0
 numpy>=1.24.0
 fastapi>=0.110.0
 uvicorn[standard]>=0.27.0
+arize-phoenix>=5.0.0
+arize-phoenix-otel>=0.6.0
+openinference-instrumentation-anthropic>=0.1.0
+pandas>=2.0.0

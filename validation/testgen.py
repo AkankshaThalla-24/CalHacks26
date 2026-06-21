@@ -47,7 +47,7 @@ def generate_all(per_scenario: int = 1) -> dict[str, list[dict]]:
     for sl_code in SIGN_LANGUAGES:
         print(f"  [testgen] generating cases for {sl_code} ...")
         cases = generate_for_language(sl_code, per_scenario=per_scenario)
-        with open(os.path.join(TESTCASE_DIR, f"{sl_code}.json"), "w") as f:
+        with open(os.path.join(TESTCASE_DIR, f"{sl_code}.json"), "w", encoding="utf-8") as f:
             json.dump(cases, f, indent=2, ensure_ascii=False)
         out[sl_code] = cases
     return out

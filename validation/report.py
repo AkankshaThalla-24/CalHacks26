@@ -87,6 +87,6 @@ def build_report(results: list[dict]) -> str:
 
     report = "\n".join(lines)
     path = os.path.join(REPORT_DIR, "validation_report.md")
-    with open(path, "w") as f:
+    with open(path, "w", encoding="utf-8") as f:
         f.write(report)
     return path
