@@ -78,6 +78,13 @@ slSelect.addEventListener("change", () => {
 const queue = [];
 let playing = false;
 
+// WLASL clips are recorded at a deliberate, slow demonstration pace
+// (~2s/word). Speeding clips up to roughly match how fast the word was
+// actually spoken keeps signing from lagging further and further behind
+// live speech. Clamped so it never looks unnaturally fast or slow.
+const MIN_PLAYBACK_RATE = 1;
+const MAX_PLAYBACK_RATE = 2.5;
+
 function enqueue(data) {
   queue.push(data);
   if (!playing) playNext();
@@ -90,6 +97,13 @@ function playNext() {
   caption.textContent = data.caption || "";
   gloss.textContent = data.gloss || "";
   if (data.clipUrl) {
+    video.playbackRate = 1;
+    video.onloadedmetadata = () => {
+      if (data.targetDuration && data.targetDuration > 0 && video.duration) {
+        const rate = video.duration / data.targetDuration;
+        video.playbackRate = Math.min(MAX_PLAYBACK_RATE, Math.max(MIN_PLAYBACK_RATE, rate));
+      }
+    };
     video.src = data.clipUrl;
     video.play().catch(() => {});
     video.onended = () => playNext();
@@ -106,4 +120,15 @@ window.streamClient.onClip(enqueue);
 window.streamClient.connect((status) => {
   conn.textContent = status === "live" ? "live" : "offline";
   conn.classList.toggle("live", status === "live");
+});
+
+// ---- Video picker: load any YouTube URL or video ID ----
+const videoInput = document.getElementById("video-input");
+const videoLoadBtn = document.getElementById("video-load-btn");
+function loadFromInput() {
+  if (videoInput.value.trim()) window.loadYouTubeVideo(videoInput.value);
+}
+videoLoadBtn.addEventListener("click", loadFromInput);
+videoInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") loadFromInput();
 });

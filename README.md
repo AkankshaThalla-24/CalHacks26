@@ -3,23 +3,27 @@
 Converts any video or audio source into a live ASL sign sequence for Deaf viewers.
 
 ```
-Audio/Video source
-    → audio_extractor.py   (raw PCM bytes)
+Audio source (file/URL, or live browser tab capture)
+    → audio_extractor.py   (raw PCM bytes)            \_ stt_service.py picks one
+    → pipeline_server.py    (live browser audio relay) /
     → stt_service.py       (Deepgram → transcript text, buffered into utterances)
     → gloss_pipeline.py    (Claude → ASL sign/fingerspell steps, verified against WLASL)
-    → sign_window.py       (native window, plays clips back-to-back)
+    → pipeline_server.py   (WebSocket broadcast + WLASL clips served over HTTP)
+    → frontend/            (browser overlay plays the clips, in sync with the video)
 ```
 
 ## Files
 
-- `audio_extractor.py` — pulls audio from any source (local file, HLS, RTMP, HTTP stream), decodes to real-time 16kHz mono PCM, emits bytes via `on_audio`.
+- `audio_extractor.py` — pulls audio from any source (local file, HLS, RTMP, HTTP stream), decodes to real-time 16kHz mono PCM, emits bytes via `on_audio`. Used when `stt_service.py` is given a file/URL directly.
 - `stream_resolver.py` — resolves YouTube / yt-dlp-supported URLs into something ffmpeg can consume. `download=True` downloads first to avoid truncating the first few words.
-- `stt_service.py` — feeds PCM bytes to Deepgram, buffers fragments into complete utterances (on `speech_final`), sends each to `gloss_pipeline`, and streams the result into `sign_window`.
+- `stt_service.py` — feeds PCM bytes to Deepgram (from `audio_extractor` or, with `--from-browser`, from live browser tab audio via `pipeline_server`), buffers fragments into complete utterances (on `speech_final`), sends each to `gloss_pipeline`, and broadcasts the result over WebSocket.
 - `prompt.py` — builds the Claude system prompt. Claude freely picks the simplest common English word per concept; no fixed vocabulary list.
 - `validator.py` — validates the shape of Claude's JSON output (well-formed steps), not vocabulary membership.
 - `gloss_pipeline.py` — calls Claude to convert a transcript string into sign/fingerspell steps, then checks each "sign" step against `wlasl_lookup` and demotes unmatched ones to fingerspelling.
 - `wlasl_lookup.py` — looks up a gloss word directly against a local WLASL dataset (`WLASL_v0.3.json` + `videos/`) on every call. No pre-curation step.
-- `sign_window.py` — small native OpenCV window that plays clips back-to-back as words are enqueued (`SignWindow.enqueue(text)`); words with no clip get a brief on-screen placeholder.
+- `pipeline_server.py` — FastAPI/WebSocket bridge. Serves WLASL clips over HTTP at `/clips/<id>.mp4`, broadcasts `{clipUrl, gloss, caption, ts, lang}` events per word to `frontend/` over `/ws`, and (in `--from-browser` mode) receives live PCM from `frontend/audio-capture.js` over `/audio-in`.
+- `frontend/` — the browser overlay (see its own section below) that actually displays the sign clips, draggable/resizable on top of the YouTube player.
+- `sign_window.py` — standalone native OpenCV window for local testing/debugging without a browser (`python sign_window.py "GOAL TEAM"` or `--file glosses.txt`). Not used by the live `stt_service.py` pipeline anymore — the browser overlay is the real output now.
 - `glosses.txt` — a sample word list for testing `sign_window.py --file glosses.txt` directly.
 
 ## Setup
@@ -40,11 +44,22 @@ Audio/Video source
    WLASL_DIR=/path/to/wlasl-processed
    ```
 
-4. Run the full pipeline on any source:
+4. Run it directly on a file/URL (prints transcripts/gloss; nothing to watch unless you also open `frontend/`):
    ```
    python stt_service.py <file-or-stream-url>
    python stt_service.py "https://www.youtube.com/watch?v=VIDEO_ID" --duration 20 --download
    ```
+
+   Or run it against **live browser audio** (the real demo path — see "Frontend overlay" below):
+   ```
+   python stt_service.py --from-browser --duration 60
+   ```
+
+5. Open the overlay (separate terminal):
+   ```
+   cd frontend && python -m http.server 5500
+   ```
+   Go to `http://localhost:5500`, load any YouTube video via the picker, click **Start audio capture**, and pick "This Tab" + check "Share tab audio" in the browser's permission dialog. The overlay plays signs live, matching whatever's actually playing in that tab.
 
 ## Next steps
 
@@ -62,7 +77,7 @@ commentary for Deaf and hard-of-hearing fans.
 |---|---|---|
 | Validation agent | `validation/` | Auto-generates test commentary for 5 sign languages, runs the translator, grades each output on 5 metrics with Claude-as-judge, writes a report. |
 | Frontend overlay | `frontend/` | Web app embedding a YouTube live with a translucent, draggable, resizable sign-language video overlay you can place in any corner; switch among ASL/BSL/LSF/CSL/JSL. |
-| Mock pipeline | `mock-pipeline/` | Stands in for Deepgram→Claude→Midjourney→Redis; streams clip events over WebSocket so the overlay demos standalone. |
+| Real pipeline | `stt_service.py` + `pipeline_server.py` | The working backend — Deepgram → Claude gloss → WLASL clips, broadcast to the overlay over WebSocket. Replaces the old mock pipeline entirely (ASL only for now; BSL/LSF/CSL/JSL in the dropdown are unimplemented). |
 
 Sign languages: **ASL, BSL, LSF (French), CSL (Chinese), JSL (Japanese)**.
 
@@ -99,19 +114,17 @@ python -m http.server 5500
 - Drag the overlay by its header, resize from the bottom-right handle, place it in any corner
   with the corner picker, switch sign language with the dropdown.
 
-## 3. Mock pipeline (for the demo)
+## 3. Real pipeline (replaces the old mock)
 
 ```bash
-cd mock-pipeline
-pip install -r requirements.txt
-uvicorn server:app --port 8000
+python stt_service.py --from-browser
 ```
 
-Emits one clip event every few seconds:
+Starts `pipeline_server.py` automatically (no separate process needed). Emits one
+clip event per gloss word:
 ```json
-{ "clipUrl": "...mp4", "gloss": "TIME 67 MESSI SCORE GOAL", "caption": "GOAL! Messi...", "ts": 0, "lang": "ASL" }
+{ "clipUrl": "http://localhost:8000/clips/24872.mp4", "gloss": "GOAL", "caption": "the team scored a goal", "ts": 0, "lang": "ASL" }
 ```
-The real pipeline emits the **same shape** — swap the WS URL and the overlay needs no changes.
 
 ## Demo
 
@@ -120,13 +133,13 @@ The real pipeline emits the **same shape** — swap the WS URL and the overlay n
 ---
 
 ### Quick full-demo run order
-1. Terminal A: `cd mock-pipeline && uvicorn server:app --port 8000`
+1. Terminal A: `python stt_service.py --from-browser` (waits for browser audio; starts `pipeline_server` on port 8000)
 2. Terminal B: `cd frontend && python -m http.server 5500`
-3. Browser: `http://localhost:5500` → live match + signing overlay; switch languages and corners.
+3. Browser: `http://localhost:5500` → load a video, click **Start audio capture**, share the tab's audio → live signing overlay.
 4. (Separately) `cd validation && python agent.py` → show the quality report.
 
-### Notes / known swaps for the real system
-- `SAMPLE_CLIP` in `mock-pipeline/server.py` is a placeholder MP4 — replace with real
-  generated sign clips (or Redis-served media).
-- The architecture's Midjourney step emits **images**; the overlay's `<video>` plays MP4.
-  Keep the clip library as the source of truth for sign video, or render images to short clips.
+### Notes / known gaps
+- Only ASL is implemented (via the WLASL dataset) — BSL/LSF/CSL/JSL exist in the
+  language dropdown but have no backing clips or translation yet.
+- `gloss_pipeline.py` picks plain English words and verifies them live against
+  the local WLASL clip set — no pre-built clip library or Midjourney/Redis step.

@@ -144,3 +144,51 @@ body {
   background: rgba(120,230,180,.25);
   border-color: rgba(120,230,180,.6);
 }
+
+/* ---- Video picker ---- */
+#video-picker {
+  position: absolute;
+  top: 20px; left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 6px;
+  padding: 8px;
+  background: rgba(0,0,0,.5);
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 10px;
+}
+#video-input {
+  width: 320px;
+  background: rgba(255,255,255,.08);
+  color: #eaeaf0;
+  border: 1px solid rgba(255,255,255,.2);
+  border-radius: 6px;
+  font-size: 13px;
+  padding: 6px 10px;
+}
+#video-load-btn {
+  background: rgba(120,230,180,.25);
+  color: #eaeaf0;
+  border: 1px solid rgba(120,230,180,.6);
+  border-radius: 6px;
+  font-size: 13px;
+  padding: 6px 14px;
+  cursor: pointer;
+}
+#video-load-btn:hover { background: rgba(120,230,180,.4); }
+
+#capture-btn {
+  background: rgba(255,255,255,.08);
+  color: #eaeaf0;
+  border: 1px solid rgba(255,255,255,.2);
+  border-radius: 6px;
+  font-size: 13px;
+  padding: 6px 14px;
+  cursor: pointer;
+}
+#capture-btn:hover { background: rgba(255,255,255,.16); }
+#capture-btn.capturing {
+  background: rgba(255,77,77,.25);
+  border-color: rgba(255,77,77,.7);
+  color: #ffd9d9;
+}

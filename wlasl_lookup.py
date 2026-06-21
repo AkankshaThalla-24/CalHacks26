@@ -62,3 +62,9 @@ def find(gloss: str) -> str | None:
         if os.path.exists(candidate):
             return candidate
     return None
+
+
+def videos_dir() -> str:
+    """Returns the folder containing the WLASL .mp4 files (for HTTP serving)."""
+    _ensure_loaded()
+    return _videos_dir

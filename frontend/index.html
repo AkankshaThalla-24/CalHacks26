@@ -39,11 +39,19 @@
       <button data-corner="bl">↙</button>
       <button data-corner="br" class="active">↘</button>
     </div>
+
+    <!-- Pick any YouTube video/live by URL or bare video ID -->
+    <div id="video-picker">
+      <input id="video-input" type="text" placeholder="Paste a YouTube URL or video ID…" />
+      <button id="video-load-btn">Load</button>
+      <button id="capture-btn" title="Captures this tab's audio and streams it to the backend">Start audio capture</button>
+    </div>
   </div>
 
   <script src="https://www.youtube.com/iframe_api"></script>
   <script src="youtube.js"></script>
   <script src="stream-client.js"></script>
   <script src="overlay.js"></script>
+  <script src="audio-capture.js"></script>
 </body>
 </html>
