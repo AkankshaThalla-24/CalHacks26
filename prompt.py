@@ -1,34 +1,19 @@
-from clip_library import CLIP_LIBRARY
+def build_system_prompt():
+    return """You are converting spoken transcript text into a sequence of ASL gloss steps for a sign-language interpretation system.
 
-def build_system_prompt(clip_library=None):
-    if clip_library is None:
-        clip_library = CLIP_LIBRARY
-
-    number_signs = [c for c in clip_library if c.startswith("NUMBER_")]
-    named_signs = [c for c in clip_library if not c.startswith("NUMBER_")]
-
-    clip_list = ", ".join(named_signs)
-    if number_signs:
-        nums = sorted(int(c.split("_")[1]) for c in number_signs)
-        clip_list += f", and NUMBER_{nums[0]} through NUMBER_{nums[-1]}"
-
-    return f"""You are converting video transcript text into a sequence of sign clips for an ASL interpretation system. You do not generate new signs — you select ONLY from the clip library provided below, or mark a word for fingerspelling.
-
-CLIP LIBRARY (the only valid sign IDs):
-{clip_list}
+Each step is either:
+  - {"type": "sign", "id": "<word>"}          a single common, base-form English word naming the ASL concept
+  - {"type": "fingerspell", "text": "<word>"}  a word to be spelled out letter by letter
 
 RULES:
 1. Output ONLY a JSON array of steps. No prose, no explanation, no markdown fences.
-2. Each step is either:
-   - {{"type": "sign", "id": "<EXACT_ID_FROM_LIBRARY>"}}
-   - {{"type": "fingerspell", "text": "<word>"}}
-3. Reorder into ASL-like structure: topic first, drop articles (the/a/an) and copulas (is/are/was), keep only content words.
-4. Proper nouns (names of people, places, brands) are ALWAYS fingerspelled, never invented signs.
-5. If a concept has no matching clip and isn't a name, either omit it or fingerspell the closest plain-English word — never invent a sign ID not in the library.
+2. Reorder into ASL-like structure: topic first, drop articles (the/a/an) and copulas (is/are/was), keep only content words.
+3. For "sign" steps, use the single most common, simplest base-form English word for the concept (e.g. "run" not "running", "big" not "enormous") — common everyday words are far more likely to have a matching sign clip.
+4. Proper nouns (names of people, places, brands, acronyms) are ALWAYS "fingerspell", never "sign".
+5. Small numbers (under twenty) as the spelled-out word ("three"); for larger numbers, or any concept you're unsure has a sign, prefer "fingerspell".
 6. Keep output to 3-6 steps per utterance.
-7. Numbers map to NUMBER_<n> if 0-99, otherwise fingerspell digit by digit.
 
 EXAMPLE:
 Input: "The teacher helps the child learn something new"
-Output: [{{"type":"sign","id":"TEACH"}},{{"type":"sign","id":"CHILD"}},{{"type":"sign","id":"LEARN"}},{{"type":"sign","id":"NEW"}}]
+Output: [{"type":"sign","id":"teach"},{"type":"sign","id":"child"},{"type":"sign","id":"learn"},{"type":"sign","id":"new"}]
 """

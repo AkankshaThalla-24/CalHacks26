@@ -1,7 +1,4 @@
-from clip_library import CLIP_LIBRARY_SET
-
-def validate_gloss_output(steps, clip_library=None):
-    valid_ids = set(clip_library) if clip_library is not None else CLIP_LIBRARY_SET
+def validate_gloss_output(steps):
     errors = []
     if not isinstance(steps, list):
         return False, ["Output is not a JSON array"]
@@ -13,9 +10,8 @@ def validate_gloss_output(steps, clip_library=None):
             continue
         step_type = step.get("type")
         if step_type == "sign":
-            sign_id = step.get("id")
-            if sign_id not in valid_ids:
-                errors.append(f"Step {i}: invalid sign id '{sign_id}' not in clip library")
+            if not step.get("id"):
+                errors.append(f"Step {i}: sign step missing id")
         elif step_type == "fingerspell":
             if not step.get("text"):
                 errors.append(f"Step {i}: fingerspell step missing text")

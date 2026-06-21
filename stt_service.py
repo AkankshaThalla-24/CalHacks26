@@ -6,12 +6,20 @@ import threading
 import time
 from dotenv import load_dotenv
 
+# When stdout isn't a real console (piped, redirected to a file), Windows
+# falls back to the cp1252 codepage, which can't encode the Unicode arrow
+# glyphs used throughout these logs. Force UTF-8 so this script behaves
+# the same whether run interactively or redirected.
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
+
 from deepgram import DeepgramClient
 from deepgram.core.events import EventType
 
 from audio_extractor import AudioExtractor
 from stream_resolver import resolve_stream_url
 from gloss_pipeline import process_transcript
+from sign_window import SignWindow
 
 load_dotenv()
 
@@ -47,10 +55,12 @@ client = DeepgramClient(api_key=api_key)
 transcript_buffer = []
 gloss_queue = queue.Queue()
 GLOSS_STOP = object()
+sign_window = SignWindow().start()
 
 
 def gloss_worker():
-    """Consumes complete utterances and converts them to ASL gloss steps, one at a time (preserves order)."""
+    """Consumes complete utterances, converts them to ASL gloss steps, and
+    feeds the resulting words to the sign window for live playback."""
     while True:
         item = gloss_queue.get()
         if item is GLOSS_STOP:
@@ -62,8 +72,11 @@ def gloss_worker():
             continue
         if steps is None:
             print(f"→ [GLOSS] no valid gloss for: {item!r}")
-        else:
-            print(f"→ [GLOSS] {item!r} -> {steps}")
+            continue
+
+        print(f"→ [GLOSS] {item!r} -> {steps}")
+        words = [s["id"] if s["type"] == "sign" else s["text"] for s in steps]
+        sign_window.enqueue(" ".join(words))
 
 
 def on_message(result):
@@ -226,3 +239,7 @@ with client.listen.v1.connect(
     gloss_queue.put(GLOSS_STOP)
     gloss_thread.join(timeout=30)
     print("→ [MAIN] gloss processing complete.")
+
+    print("→ [MAIN] waiting for sign window to finish playback...")
+    sign_window.wait_until_idle(timeout=30)
+    sign_window.stop()

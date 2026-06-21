@@ -2,3 +2,5 @@ anthropic>=0.40.0
 deepgram-sdk>=7.0.0
 python-dotenv>=1.0.0
 yt-dlp>=2025.1.1
+opencv-python>=4.8.0
+numpy>=1.24.0
