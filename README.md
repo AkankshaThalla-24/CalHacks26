@@ -1,4 +1,4 @@
-# AccessStream — Real-time ASL Interpretation Pipeline
+# SignCast — Real-time ASL Interpretation Pipeline
 
 Converts any video or audio source into a live ASL sign sequence for Deaf viewers.
 
@@ -68,7 +68,7 @@ Audio source (file/URL, or live browser tab capture)
 
 ---
 
-# Live Sports · Sign-Language Accessibility (team scope)
+# SignCast · Sign-Language Accessibility (team scope)
 
 Three pieces toward the team's goal — a sign-language layer that live-translates match
 commentary for Deaf and hard-of-hearing fans.

@@ -61,7 +61,7 @@ def resolve_stream_url(source: str, download: bool = False, dest_dir: str = None
 
     if download:
         dest_dir = dest_dir or tempfile.gettempdir()
-        out_tmpl = os.path.join(dest_dir, "accessstream_%(id)s.%(ext)s")
+        out_tmpl = os.path.join(dest_dir, "signcast_%(id)s.%(ext)s")
         dl = subprocess.run(
             ["yt-dlp", "-q", "--no-warnings",
              "-f", "bestaudio/best",

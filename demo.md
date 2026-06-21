@@ -1,4 +1,4 @@
-# Demo Script — Live Sports, Signed in Real Time (~2 min)
+# Demo Script — SignCast, Signed in Real Time (~2 min)
 
 **Format:** one presenter, screen shared. Times are cumulative.
 
