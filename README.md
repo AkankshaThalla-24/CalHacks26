@@ -142,7 +142,11 @@ clip event per gloss word:
 
 ## Demo
 
-`demo.md` — a ~2-minute narrated walkthrough.
+![SignCast overlay running over a live stream](images/sys-screenshot.png)
+
+A screenshot of the system
+
+Youtube Demo Link: [Demo Link](https://youtu.be/BwFu3vXiJ54)
 
 ---
 
