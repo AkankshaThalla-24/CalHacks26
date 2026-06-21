@@ -1,8 +1,11 @@
-# secrets — never commit
 .env
+.vscode
+.venv
 
-# python
-__pycache__/
+.DS_Store
+__pycache__
+.claude
+
 *.pyc
 
 # generated artifacts
